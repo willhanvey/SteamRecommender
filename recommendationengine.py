@@ -1,4 +1,5 @@
 import requests
+from pymongo import MongoClient
 import json
 import time
 import sys
@@ -270,6 +271,25 @@ def cosine_similarity(self, u, v):
     
     Edge cases: What if the player doesn't have friends? What if htey have less than 3? Etc.'''
 
+def load_into_mongo():
+    # setting up the mongo connection and creating a new database
+    client = MongoClient()
+    db = client.SteamGames
+    collection = db.Games
+    db.drop_collection(collection)
+
+    # reading the json data
+    with open('steam_data_final.json') as f:
+        file_data = json.load(f)
+
+    # turning the json dict to a list
+    games_list = []
+    for key in file_data.keys():
+            file_data[key]["_id"] = key
+            games_list.append(file_data[key])
+
+    # inserting games into the database
+    collection.insert_many(games_list)
 
 def main():
     initialize()
