@@ -68,20 +68,23 @@ class Player:
             with mongo db later) and gets info about the games
         '''
         print(f'Getting game info for {self.persona}...')
-        with open('steam_data_final.json', 'r') as infile:
-            data = json.load(infile)
-            self.games_dict = {}
-            for tup in self.game_data:
-                game_id = str(tup[1])
-                try:
-                    loc = data[game_id]
-                    self.games_dict[game_id] = {'Name': loc['name'], 'Playtime': int(tup[0]),
-                                                'Developer': loc['developer'],
-                                                'Publisher': loc['publisher'], 'Positive': loc['positive'],
-                                                'Negative': loc['negative'], 'Owners': loc['owners'],
-                                                'Price': loc['initialprice']}
-                except KeyError:
-                    pass
+        client = MongoClient()
+        db = client.SteamGames
+        collection = db.Games
+
+        self.games_dict = {}
+        for tup in self.game_data:
+            game_id = str(tup[1])
+            try:
+
+                loc = collection.find_one({"_id": game_id})
+                self.games_dict[game_id] = {'Name': loc['name'], 'Playtime': int(tup[0]),
+                                            'Developer': loc['developer'],
+                                            'Publisher': loc['publisher'], 'Positive': loc['positive'],
+                                            'Negative': loc['negative'], 'Owners': loc['owners'],
+                                            'Price': loc['initialprice']}
+            except KeyError:
+                pass
 
         return
 
