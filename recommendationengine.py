@@ -3,7 +3,8 @@ from pymongo import MongoClient
 import json
 import time
 import sys
-
+import pprint
+from playerclass import Player
 friendnetworkdict = []
 
 url1 = 'http://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key='
@@ -12,125 +13,6 @@ url3 = '&relationship=friend'
 
 gamesurl1 = 'http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key='
 gamesurl3 = '&format=json'
-
-
-class Player:
-
-    playercount = 0
-
-    def __init__(self, id, games):
-        Player.playercount += 1
-        self.id = id
-        self.games = games
-        self.get_player_info()
-        self.filter_games()
-
-    def get_player_info(self):
-        ''' Gets information about the player from teh API and takes what we need'''
-        url = f'http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={KEY}&steamids={self.id}'
-        r = requests.get(url)
-        for value in r.json()['response']['players']:
-            self.persona = value['personaname']
-            self.timecreated = value['timecreated']
-            self.lastlogoff = value['lastlogoff']
-            try:
-                self.countrycode = value['loccountrycode']
-            except KeyError:
-               self.countrycode = 'NA'
-            try:
-                self.statecode = value['locstatecode']
-            except KeyError:
-                self.statecode = 'NA'
-        self.playerinfo = {'ID': self.id, 'Persona': self.persona, 'Time Created': self.timecreated,
-                           'Last Logoff': self.lastlogoff, 'Country': self.countrycode, 'State': self.statecode}
-        print(self.playerinfo)
-
-    def filter_games(self):
-        ''' Gets information about the player's games from the API and takes what we need'''
-        url = f'http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={KEY}&steamid={self.id}&format=json'
-        while True:
-            r = requests.get(url)
-            try:
-                self.total_games = r.json()['response']['game_count']
-                self.game_data = []
-                for value in r.json()['response']['games']:
-                    self.game_data.append((value['playtime_forever'], value['appid']))
-                break
-            except KeyError:
-                print('The Steam API encountered an error. Please try running the code again.')
-        self.game_data.sort(reverse=True)
-        print(self.persona, self.total_games, self.game_data)
-        self.get_game_info()
-        self.top_genres()
-
-    def get_game_info(self):
-        ''' This pulls data from the json file (hopefully to be replaced
-            with mongo db later) and gets info about the games
-        '''
-        print(f'Getting game info for {self.persona}...')
-        client = MongoClient()
-        db = client.SteamGames
-        collection = db.Games
-
-        self.games_dict = {}
-        for tup in self.game_data:
-            game_id = str(tup[1])
-            try:
-
-                loc = collection.find_one({"_id": game_id})
-                self.games_dict[game_id] = {'Name': loc['name'], 'Playtime': int(tup[0]),
-                                            'Developer': loc['developer'],
-                                            'Publisher': loc['publisher'], 'Positive': loc['positive'],
-                                            'Negative': loc['negative'], 'Owners': loc['owners'],
-                                            'Price': loc['initialprice']}
-            except KeyError:
-                pass
-
-        return
-
-    def top_genres(self):
-        # Get genres of top 10  most played games
-        # Ensuring code doesn't break if user doesn't have many games
-        top_games = min(15, len(self.games_dict))
-        counter = 0
-        genre_list = []
-        for key in self.games_dict:
-            if counter == 10:
-                break
-
-            try:
-                r = requests.get(f'http://store.steampowered.com/api/appdetails?appids={key}')
-                if r.json() != None:
-                    if r.json()[key]['success'] == True:
-                        genre = r.json()[key]['data']['genres']
-                        if len(genre) > 1:
-                            for subdict in genre:
-                                genre_list.append(subdict['description'])
-                        elif len(genre) == 1:
-                            genre_list.append(genre[0]['description'])
-            except KeyError:
-                pass
-            counter += 1
-        self.top_genres = self.get_top(genre_list)
-        return
-
-    @staticmethod
-    def get_top(list):
-        dict = {}
-        for _ in list:
-            if _ in dict:
-                dict[_] += 1
-            else:
-                dict[_] = 1
-        return dict
-    # FOR FRIENDS:
-    # Top games in most similar friends (based on top genres)
-    # DO COSINE SIMILARITY WITH OTHER USERS TO GET MOST SIMILAR
-    # RECOMMEND OTHER TOP GAMES FROM PUBLISHERS/DEVS OF USER'S TOP GAMES
-
-
-    def __str__(self):
-        return self.persona
 
 
 def get_data(id=0):
@@ -175,7 +57,6 @@ def initialize():
         #USER_ID = str(input('Please enter your steam ID:\n'))
         USER_ID = '76561198323942078'
         r = requests.get(gamesurl1 + KEY + url2 + USER_ID + gamesurl3)
-
         try:
             if r.json()['response'] == {}:
                 print('You may have entered the wrong ID or your profile may be private. Please try again.')
@@ -186,6 +67,7 @@ def initialize():
                 return
         except json.decoder.JSONDecodeError:
             print('You have entered an invalid ID. Please try again.')
+
 
 def create_objects(friendnetworkdict):
     ''' Driver for getting games and info about player's friends '''
@@ -198,9 +80,10 @@ def create_objects(friendnetworkdict):
             friends.add(friend)
     for friend in friends:
         gamedict = get_games(gamedict, friend)
-        playerobj = Player(friend, gamedict)
+        playerobj = Player(friend, gamedict, KEY)
         players.append(playerobj)
     return friends, players
+
 
 def unique_keys(dict_1, dict_2):
     '''
@@ -215,21 +98,21 @@ def unique_keys(dict_1, dict_2):
         unique_keys.add(key)
     return unique_keys
 
+
 def most_similar(players, id=None):
     if id == None:
         id = USER_ID
     for player in players:
         if player.id == id:
-            break
-    player_words = player.top_genres
-    for other_player in players:
-        if player.id != other_player.id:
-            other_words = other_player.top_genres
-            unique = unique_keys(player_words, other_words)
-            print(vec(player_words, unique))
-            print(vec(other_words, unique))
-            print(unique)
-            print(player_words)
+            pass
+    else:
+        player_words = player.top_genres
+        print(player_words)
+        for other_player in players:
+            if player.id != other_player.id:
+                other_words = other_player.top_genres
+                unique = unique_keys(player_words, other_words)
+                print(unique)
 
 def vec(myinterests, all_interests):
     ''' In the middle of testing this function, trying to get cosine similarity workign'''
@@ -288,8 +171,8 @@ def load_into_mongo():
     # turning the json dict to a list
     games_list = []
     for key in file_data.keys():
-            file_data[key]["_id"] = key
-            games_list.append(file_data[key])
+        file_data[key]["appid"] = key
+        games_list.append(file_data[key])
 
     # inserting games into the database
     collection.insert_many(games_list)
