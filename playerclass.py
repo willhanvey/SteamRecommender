@@ -81,7 +81,7 @@ class Player:
         return
 
     def top_genres(self):
-        # Get genres of top 10  most played games
+        # Get genres of top 15 most played games
         # Ensuring code doesn't break if user doesn't have many games
         print(f'Getting genres for {self.persona}...')
         top_games = min(15, len(self.games_dict))

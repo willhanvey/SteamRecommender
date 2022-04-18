@@ -24,11 +24,15 @@ def get_data(id=0):
     r = requests.get(url)
     friendnetworkdict[id] = []
     if r.json() != {}:
+        counter = 0
         for value in r.json()['friendslist']['friends']:
             r = requests.get(gamesurl1 + KEY + url2 + value['steamid'] + gamesurl3)
             if r.json()['response'] != {}:
                 if r.json()['response']['game_count'] > 0:
                     friendnetworkdict[id].append(value['steamid'])
+                    counter += 1
+                    if counter == 4:
+                        break
     return friendnetworkdict
 
 
@@ -107,7 +111,6 @@ def most_similar(players, id=None):
             pass
     else:
         player_words = player.top_genres
-        print(player_words)
         for other_player in players:
             if player.id != other_player.id:
                 other_words = other_player.top_genres
