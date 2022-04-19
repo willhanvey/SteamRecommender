@@ -11,62 +11,53 @@ class Neo4jDatabase:
         self.driver.close()
 
 
-    @staticmethod
-    def create_player_graph(tx, player):
-        username = player.persona
-        player_games = player.games_dict
-        developers = []
-        publishers = []
+    def create_player_graph(self, player):
+        with self.driver.session() as tx:
+            username = player.persona
+            player_games = player.games_dict
 
-        tx.run("CREATE (p1:Player { username: $username }) ",
-               username=username)
+            tx.run("CREATE (p1:Player { username: $username }) ",
+                   username=username)
 
-        for key in player_games.keys():
-            game_name = player_games[key]["Name"]
-            publisher_name = player_games[key]["Publisher"]
-            developer_name = player_games[key]["Developer"]
+            for key in player_games.keys():
+                game_name = player_games[key]["Name"]
+                publisher_name = player_games[key]["Publisher"]
+                developer_name = player_games[key]["Developer"]
+                try:
+                    genres = player_games[key]["Genres"]
+                except KeyError:
+                    genres = []
 
-            query = (
-                "MATCH (p1:Player) WHERE p1.username = $username "
-                "CREATE (g:Game { name: $name, price: $price}) "
-                "CREATE (p1)-[:Owns { playtime: $playtime }]->(g) "
-            )
-            tx.run(query, username=username, name=game_name, price=player_games[key]["Price"],
-                   playtime=player_games[key]["Playtime"])
-
-            if publisher_name in publishers:
                 query = (
-                    "MATCH (g:Game) WHERE g.name = $game_name "
-                    "MATCH (p:Publisher) WHERE p.name = $publisher_name "
-                    "CREATE (p)-[:Published]->(g) "
+                    "MATCH (p1:Player) WHERE p1.username = $username "
+                    "MERGE (g:Game { name: $name}) "
+                    "CREATE (p1)-[:Owns { playtime: $playtime }]->(g) "
                 )
-                tx.run(query, game_name=game_name, publisher_name=publisher_name)
-            else:
-                publishers.append(publisher_name)
+                tx.run(query, username=username, name=game_name, price=player_games[key]["Price"],
+                       playtime=player_games[key]["Playtime"])
+
                 query = (
                     "MATCH (g:Game) WHERE g.name = $game_name "
-                    "CREATE (p:Publisher { name: $publisher_name}) "
-                    "CREATE (p)-[:Published]->(g) "
+                    "MERGE (p:Publisher { name: $publisher_name}) "
+                    "MERGE (p)-[:Published]->(g) "
                 )
                 tx.run(query, game_name=game_name, publisher_name=publisher_name)
 
 
-            if developer_name in developers:
                 query = (
                     "MATCH (g:Game) WHERE g.name = $game_name "
-                    "MATCH (d:Developer) WHERE d.name = $developer_name "
-                    "CREATE (d)-[:Developed]->(g) "
-                )
-                tx.run(query, game_name=game_name, developer_name=developer_name)
-            else:
-                developers.append(developer_name)
-                query = (
-                    "MATCH (g:Game) WHERE g.name = $game_name "
-                    "CREATE (d:Developer { name: $developer_name}) "
-                    "CREATE (d)-[:Developed]->(g) "
+                    "MERGE (d:Developer { name: $developer_name}) "
+                    "MERGE (d)-[:Developed]->(g) "
                 )
                 tx.run(query, game_name=game_name, developer_name=developer_name)
 
+                for genre_name in genres:
+                    query = (
+                        "MATCH (g:Game) WHERE g.name = $game_name "
+                        "MERGE (n:Genre { name: $genre_name }) "
+                        "MERGE (g)-[:Has]->(n) "
+                    )
+                    tx.run(query, game_name=game_name, genre_name=genre_name)
 
 
 
@@ -90,11 +81,11 @@ class Neo4jDatabase:
     #     return result.single()[0]
 
 if __name__ == "__main__":
-    greeter = Neo4jDatabase("bolt://localhost:7687", "neo4j", "*PUT YOUR PASSWORD HERE*")
+    greeter = Neo4jDatabase("bolt://localhost:7687", "neo4j", "*ENTER PASSWORD HERE*")
 
     # put your steam id and key below i dont rly know what the games is for so i put in an empty list []
     # player = Player()
 
-    greeter.create_graph(player)
+    greeter.create_graph(Player)
 
     greeter.close()

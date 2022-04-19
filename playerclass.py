@@ -95,15 +95,19 @@ class Player:
             if r.json() != None:
                 if r.json()[key]['success'] == True:
                     genre = r.json()[key]['data']['genres']
+                    self.games_dict[key]['Genres'] = []
                     if len(genre) > 1:
                         for subdict in genre:
                             genre_list.append(subdict['description'])
+                            self.games_dict[key]['Genres'].append(subdict['description'])
                     elif len(genre) == 1:
                         genre_list.append(genre[0]['description'])
+                        self.games_dict[key]['Genres'].append(genre[0]['description'])
                 elif r.json()[key]['success'] == False:
                     print(self.games_dict[key])
             counter += 1
         self.top_genres = self.get_top(genre_list)
+
         print('Done getting genres')
         return
 

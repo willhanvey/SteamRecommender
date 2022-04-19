@@ -5,6 +5,8 @@ import time
 import sys
 import pprint
 from playerclass import Player
+from neo4jtest import Neo4jDatabase
+
 friendnetworkdict = []
 
 url1 = 'http://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key='
@@ -30,7 +32,7 @@ def get_data(id=0):
             if r.json()['response'] != {}:
                 if r.json()['response']['game_count'] > 0:
                     friendnetworkdict[id].append(value['steamid'])
-                    counter += 1
+                    #counter += 1
                     if counter == 4:
                         break
     return friendnetworkdict
@@ -157,7 +159,7 @@ def cosine_similarity(self, u, v):
     Gets initial stats about the user's games: most played genres, most common categories, etc.
     Getting a working connection with MongoDB to use for the database instead of the file directly
     Converting games and player information into 
-    
+    What games do most friends have? We can recommend some of those
     Edge cases: What if the player doesn't have friends? What if htey have less than 3? Etc.'''
 
 def load_into_mongo():
@@ -184,7 +186,10 @@ def main():
     initialize()
     friendnetworkdict = get_data()
     friends, players = create_objects(friendnetworkdict)
-    print(friends, players)
+    most_similar(players)
+    neodb = Neo4jDatabase("bolt://localhost:7687", "neo4j", "d2ubre")
+    for player in players:
+        neodb.create_player_graph(player)
     most_similar(players)
 
 
