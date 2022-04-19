@@ -187,7 +187,7 @@ def main():
     friendnetworkdict = get_data()
     friends, players = create_objects(friendnetworkdict)
     most_similar(players)
-    neodb = Neo4jDatabase("bolt://localhost:7687", "neo4j", "d2ubre")
+    neodb = Neo4jDatabase("bolt://localhost:7687", "neo4j", "ENTER PASSWORD")
     for player in players:
         neodb.create_player_graph(player)
     most_similar(players)
