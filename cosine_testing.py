@@ -30,3 +30,32 @@ def cosine_sentences(s1, s2):
     
   cosine = c / float((sum(l1)*sum(l2))**0.5)
   print("similarity: ", cosine)
+  
+  
+  
+def cosine_friends(gameList1, gameList2):  
+  games = {}
+  i = 0
+  # loop through each list, find distinct games and mapping them to a unique number starting at zero
+  for game in gameList1:
+    if game not in games:
+        games[game] = i
+        i += 1
+  for game in gameList1:
+    if game not in games:
+        games[game] = i
+        i += 1
+        
+  # create a numpy array (vector) for each input, filled with zeros
+  a = np.zeros(len(vocab))
+  b = np.zeros(len(vocab))
+  # loop through each input and create a corresponding vector for it
+  # this vector counts occurrences of each word in the dictionary
+  for word in A:
+    index = vocab[word] # get index from dictionary
+    a[index] += 1 # increment count for that index
+  for word in B:
+    index = vocab[word]
+    b[index] += 1
+    
+  sim = np.dot(a, b) / np.sqrt(np.dot(a, a) * np.dot(b, b))
