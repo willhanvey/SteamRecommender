@@ -378,8 +378,8 @@ def main():
     with open("neo4jpassword.txt", "r") as infile:
         neopassword = infile.readline()
     neodb = Neo4jDatabase("bolt://localhost:7687", "neo4j", neopassword)
-    #for player in players:
-        #neodb.create_player_graph(player)
+    for player in players:
+        neodb.create_player_graph(player)
     for player in players:
         if player.id == USER_ID:
             get_recommendations(cosine_dict, player, neodb)
