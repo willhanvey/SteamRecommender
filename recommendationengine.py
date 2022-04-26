@@ -16,7 +16,6 @@ def get_data():
     url = f'http://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key={KEY}&steamid={USER_ID}&relationship=friend'
     r = requests.get(url)
     friendnetworkdict[id] = []
-    counter = 0
     if r.json() != {}:
         for value in r.json()['friendslist']['friends']:
             oid = value['steamid']
